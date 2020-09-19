@@ -31,14 +31,42 @@ library
       , monad-batcher
       , mtl               >= 2.2.1  && < 3
       , transformers      >= 0.5.2  && < 0.6
+      , vector
 
     exposed-modules:
         Data.Range
         Network.Modbus.TCP
+        Network.Modbus.RTU
+        Network.Modbus.RTU.Internal.Protocol
+        Network.Modbus.RTU.Internal.Batch
+        Network.Modbus.RTU.Internal.CRC16
 
+        Network.Modbus.Common.Protocol
         Network.Modbus.TCP.Internal.Batch
         Network.Modbus.TCP.Internal.Protocol
 
+executable modbus-tcp-exe
+    main-is: Main.hs
+    other-modules:
+        Paths_modbus_tcp
+    hs-source-dirs:
+        app
+    build-depends:
+        attoparsec        >= 0.13   && < 0.14
+      , base              >= 4.9    && < 5
+      , bytestring        >= 0.10.6 && < 0.11
+      , exceptions        >= 0.10.4  && < 0.11
+      , monad-batcher
+      , crc
+      , mtl               >= 2.2.1  && < 3
+      , transformers      >= 0.5.2  && < 0.6
+      , vector
+      , network
+      , safe-exceptions
+      , iproute
+      , serialport
+      , modbus-tcp
+    default-language: Haskell2010
 test-suite test-modbus-tcp
     type: exitcode-stdio-1.0
     hs-source-dirs: test
