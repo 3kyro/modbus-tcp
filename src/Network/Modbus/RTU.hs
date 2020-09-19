@@ -1,4 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -- | An implementation of the Modbus RTU protocol.
 --
 -- This implementation is based on the @MODBUS Application Protocol
@@ -7,16 +6,57 @@
 -- and the @MODBUS over Serial Line Specification and implementation Guide V1.02
 -- (<https://www.modbus.org/docs/Modbus_over_serial_line_V1_02.pdf>).
 module Network.Modbus.RTU
+  ( -- * Sessions
+    Session
+  , runSession
 
+  , Config(..)
+  , RetryPredicate
 
-    where
+    -- ** Workers
+  , Worker
+  , directWorker
+  , batchWorker
+  , BatchConfig(..)
+  , BatchReadConfig(..)
+  , defaultBatchConfig
+  , defaultBatchReadConfig
 
+    -- * Modbus Protocol
+  , ExceptionCode(..)
+  , ModbusException(..)
+  , UnitId(..)
 
-import Network.Modbus.TCP.Internal.Protocol (RetryPredicate, PDU (..))
+    -- ** Entity addresses
+  , Address(..)
+  , ToAddress(..)
 
-import Network.Modbus.TCP.Internal.Batch
-import Data.Word (Word8)
-import qualified Data.ByteString as B
+    -- ** Entity numbers
+  , CoilNumber
+  , DiscreteInputNumber
+  , InputRegisterNumber
+  , HoldingRegisterNumber
+  , mkCoilNumber
+  , mkDiscreteInputNumber
+  , mkInputRegisterNumber
+  , mkHoldingRegisterNumber
+
+    -- * Commands
+  , command
+
+  , readCoils
+  , readDiscreteInputs
+  , readHoldingRegisters
+  , readInputRegisters
+  , writeSingleCoil
+  , writeSingleRegister
+  , writeMultipleRegisters
+  ) where
+
+import Network.Modbus.Common.Protocol
+import Network.Modbus.RTU.Internal.Protocol
+import Network.Modbus.RTU.Internal.Batch
+
 
 
 
