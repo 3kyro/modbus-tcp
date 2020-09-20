@@ -26,6 +26,7 @@ module Network.Modbus.RTU
   , ExceptionCode(..)
   , ModbusException(..)
   , UnitId(..)
+  , broadcast
 
     -- ** Entity addresses
   , Address(..)
@@ -43,7 +44,6 @@ module Network.Modbus.RTU
 
     -- * Commands
   , command
-
   , readCoils
   , readDiscreteInputs
   , readHoldingRegisters

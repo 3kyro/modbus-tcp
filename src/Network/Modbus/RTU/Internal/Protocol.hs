@@ -5,10 +5,12 @@
 {-# language ScopedTypeVariables #-}
 
 module Network.Modbus.RTU.Internal.Protocol
-    ( UnitId (..)
-    , broadcast
-    , ADU (..)
+    ( -- Modbus Protocol
+      ADU (..)
     , Config (..)
+    , Response (..)
+    , UnitId (..)
+    , broadcast
 
     -- Parsers
     , pduParser
@@ -27,9 +29,6 @@ module Network.Modbus.RTU.Internal.Protocol
     , writeMultipleCoils_
     , writeSingleRegister_
     , writeMultipleRegisters_
-
-    , Response (..)
-    
     ) where
 
 import "attoparsec" Data.Attoparsec.ByteString ( anyWord8 )
@@ -48,18 +47,8 @@ import "mtl" Control.Monad.Reader ( ask )
 import "transformers" Control.Monad.Trans.Class ( lift )
 import "transformers" Control.Monad.Trans.Reader ( ReaderT )
 
-
-
-import Network.Modbus.Common.Protocol
-    (functionCodeBuilder, anyWord16be, coilsBuilder, addressBuilder, getW16s, getW8s, rangeBuilder, builderToByteString, exceptionCodeParser, ModbusException (..), FunctionCode(..), pduBuilder, functionCodeParser
-    
-    , Address (..)
-    , Config (..)
-
-    , PDU (..)
-
-    )
-import Network.Modbus.RTU.Internal.CRC16 (digest16)
+import "this" Network.Modbus.Common.Protocol
+import "this" Network.Modbus.RTU.Internal.CRC16 (digest16)
 
 -- See: /MODBUS over serial line specification and implementation guide V1.02, section 2.3/
 

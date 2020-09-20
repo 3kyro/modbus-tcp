@@ -7,24 +7,22 @@
 {-# language RankNTypes #-}
 {-# language ScopedTypeVariables #-}
 
-{-# OPTIONS_HADDOCK not-home #-}
-
 module Network.Modbus.RTU.Internal.Batch
-  (
+  ( -- Sessions
     Session
   , runSession
 
+    -- Workers
   , Worker
   , directWorker
   , batchWorker
-
   , BatchConfig(..)
   , BatchReadConfig(..)
   , defaultBatchConfig
   , defaultBatchReadConfig
 
+    -- Commands
   , command
-
   , readCoils
   , readDiscreteInputs
   , readHoldingRegisters
@@ -36,6 +34,7 @@ module Network.Modbus.RTU.Internal.Batch
 
 import "base" Control.Monad ( when )
 import "base" Control.Monad.IO.Class ( MonadIO, liftIO )
+import "transformers" Control.Monad.Trans.Reader ( ReaderT, runReaderT )
 import "base" Data.Foldable ( foldl', traverse_, for_ )
 import "base" Data.List ( groupBy, sortBy, intercalate )
 import "base" Data.Word ( Word8, Word16 )
@@ -47,7 +46,6 @@ import           "this" Data.Range ( Range )
 import qualified "this" Data.Range as Range
 import "this" Network.Modbus.RTU.Internal.Protocol
 import "this" Network.Modbus.Common.Protocol
-import "transformers" Control.Monad.Trans.Reader ( ReaderT, runReaderT )
 
 
 --------------------------------------------------------------------------------

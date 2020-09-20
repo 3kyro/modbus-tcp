@@ -1,13 +1,18 @@
--- Almost verbatim copied from
+{-# LANGUAGE PackageImports #-}
+-- Copied from
 -- https://github.com/MichaelXavier/crc.git
+-- Modified so that a CRC can be build with a specific start value
+-- OXFFFF for the specific case of Modbus RTU CRC
+-- For more information see Modbus over Serial Line: Specification and Implemnetation Guide V1.02
+-- https://www.modbus.org/docs/Modbus_over_serial_line_V1_02.pdf
 module Network.Modbus.RTU.Internal.CRC16
     ( digest16
     ) where
 
-import Data.Bits ( Bits(xor, shiftR, (.&.)) )
-import Data.ByteString as BS ( ByteString, foldl )
-import Data.Vector.Unboxed as V ( (!), fromList, Vector )
-import Data.Word ( Word16 )
+import "base" Data.Bits ( Bits(xor, shiftR, (.&.)) )
+import "bytestring" Data.ByteString as BS ( ByteString, foldl )
+import "vector" Data.Vector.Unboxed as V ( (!), fromList, Vector )
+import "base" Data.Word ( Word16 )
 
 digest16 :: ByteString -> Word16
 digest16 = BS.foldl go 0xFFFF
@@ -16,7 +21,6 @@ digest16 = BS.foldl go 0xFFFF
       let idx = fromIntegral (crc' `xor` b16) .&. 0xff
           b16 = fromIntegral b8
       in (table ! idx) `xor` ((crc' `shiftR` 8) .&. 0x00ffff)
-
 
 -------------------------------------------------------------------------------
 table :: V.Vector Word16

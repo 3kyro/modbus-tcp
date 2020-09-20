@@ -4,14 +4,11 @@
 {-# language ScopedTypeVariables #-}
 {-# language StandaloneDeriving #-}
 
-{-# OPTIONS_HADDOCK not-home #-}
-
 module Network.Modbus.Common.Protocol
-  ( -- * Modbus Protocol
-    -- ** Entity addresses
+  ( -- Entity addresses
     Address(..)
   , ToAddress(..)
-    -- * Entity numbers
+    -- Entity numbers
   , CoilNumber
   , DiscreteInputNumber
   , InputRegisterNumber
@@ -21,21 +18,21 @@ module Network.Modbus.Common.Protocol
   , mkInputRegisterNumber
   , mkHoldingRegisterNumber
 
-    -- ** Protocol sessions
+    -- Protocol sessions
   , Config(..)
   , RetryPredicate
 
-    -- * Protocol objects
+    -- Protocol objects
   , PDU(..)
   , FunctionCode(..)
   , ExceptionCode(..)
   , ModbusException(..)
 
-    -- ** Parsers
+    -- Parsers
   , functionCodeParser
   , exceptionCodeParser
 
-    -- ** Builders
+    -- Builders
   , addressBuilder
   , coilsBuilder
   , functionCodeBuilder
@@ -44,7 +41,7 @@ module Network.Modbus.Common.Protocol
   , exceptionCodeBuilder
   , builderToByteString
 
-    -- * Executing commands
+    -- Utils
   ,getW8s
   ,getW16s
   ,(<&>)
