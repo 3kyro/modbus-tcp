@@ -12,11 +12,12 @@ import qualified "bytestring" Data.ByteString as B
 import qualified "bytestring" Data.ByteString.Lazy as BL
 import           "modbus-tcp" Data.Range ( Range )
 import qualified "modbus-tcp" Data.Range as Range
-import           "modbus-tcp" Network.Modbus.TCP
-import           "modbus-tcp" Network.Modbus.TCP.Internal.Protocol
 import qualified "QuickCheck" Test.QuickCheck as QC
 import           "tasty" Test.Tasty
 import qualified "tasty-quickcheck" Test.Tasty.QuickCheck as QC
+import           Network.Modbus.TCP.Internal.Protocol
+
+
 
 --------------------------------------------------------------------------------
 
