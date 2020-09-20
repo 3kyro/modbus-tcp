@@ -58,5 +58,6 @@ module Network.Modbus.TCP
   , writeMultipleRegisters
   ) where
 
-import Network.Modbus.TCP.Internal.Batch
-import Network.Modbus.TCP.Internal.Protocol
+import Network.Modbus.Protocol
+import Network.Modbus.Internal.TCP.Batch
+import Network.Modbus.Internal.TCP.Protocol

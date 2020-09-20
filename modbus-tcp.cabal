@@ -38,15 +38,15 @@ library
         Network.Modbus.TCP
         Network.Modbus.RTU
 
+        Network.Modbus.Protocol
     other-modules:
-        Network.Modbus.Common.Protocol
 
-        Network.Modbus.TCP.Internal.Batch
-        Network.Modbus.TCP.Internal.Protocol
+        Network.Modbus.Internal.TCP.Batch
+        Network.Modbus.Internal.TCP.Protocol
 
-        Network.Modbus.RTU.Internal.Protocol
-        Network.Modbus.RTU.Internal.Batch
-        Network.Modbus.RTU.Internal.CRC16
+        Network.Modbus.Internal.RTU.Protocol
+        Network.Modbus.Internal.RTU.Batch
+        Network.Modbus.Internal.RTU.CRC16
 
 test-suite test-modbus-tcp
     type: exitcode-stdio-1.0
@@ -69,7 +69,7 @@ test-suite test-modbus-tcp
       , mtl
       , monad-batcher
     other-modules:
-        Network.Modbus.Common.Protocol
-
-        Network.Modbus.TCP.Internal.Batch
-        Network.Modbus.TCP.Internal.Protocol
+        Data.Range
+        Network.Modbus.Protocol
+        Network.Modbus.Internal.TCP.Batch
+        Network.Modbus.Internal.TCP.Protocol

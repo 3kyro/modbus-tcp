@@ -5,7 +5,7 @@
 -- OXFFFF for the specific case of Modbus RTU CRC
 -- For more information see Modbus over Serial Line: Specification and Implemnetation Guide V1.02
 -- https://www.modbus.org/docs/Modbus_over_serial_line_V1_02.pdf
-module Network.Modbus.RTU.Internal.CRC16
+module Network.Modbus.Internal.RTU.CRC16
     ( digest16
     ) where
 

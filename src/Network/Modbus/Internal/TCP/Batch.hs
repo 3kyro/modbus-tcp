@@ -7,22 +7,26 @@
 {-# language RankNTypes #-}
 {-# language ScopedTypeVariables #-}
 
-module Network.Modbus.RTU.Internal.Batch
-  ( -- Sessions
+{-# OPTIONS_HADDOCK not-home #-}
+
+module Network.Modbus.Internal.TCP.Batch
+  ( -- * Sessions
     Session
   , runSession
 
-    -- Workers
+    -- ** Workers
   , Worker
   , directWorker
   , batchWorker
+
   , BatchConfig(..)
   , BatchReadConfig(..)
   , defaultBatchConfig
   , defaultBatchReadConfig
 
-    -- Commands
+    -- * Commands
   , command
+
   , readCoils
   , readDiscreteInputs
   , readHoldingRegisters
@@ -34,7 +38,6 @@ module Network.Modbus.RTU.Internal.Batch
 
 import "base" Control.Monad ( when )
 import "base" Control.Monad.IO.Class ( MonadIO, liftIO )
-import "transformers" Control.Monad.Trans.Reader ( ReaderT, runReaderT )
 import "base" Data.Foldable ( foldl', traverse_, for_ )
 import "base" Data.List ( groupBy, sortBy, intercalate )
 import "base" Data.Word ( Word8, Word16 )
@@ -44,8 +47,8 @@ import "exceptions" Control.Monad.Catch
 import qualified "monad-batcher" Control.Monad.Batcher as Batcher
 import           "this" Data.Range ( Range )
 import qualified "this" Data.Range as Range
-import "this" Network.Modbus.RTU.Internal.Protocol
-import "this" Network.Modbus.Common.Protocol
+import "this" Network.Modbus.Internal.TCP.Protocol
+import "transformers" Control.Monad.Trans.Reader ( ReaderT, runReaderT )
 
 
 --------------------------------------------------------------------------------
@@ -58,51 +61,51 @@ data Command (m :: * -> *) (r :: *) where
     CmdThrow :: (Exception e) => e -> Command m a
 
     CmdCommand
-        :: UnitId
+        :: TPU
         -> FunctionCode
         -> BB.Builder
         -> Command m Response
 
     CmdReadCoils
-        :: UnitId
+        :: TPU
         -> Range Address
         -> Command m [Word8]
 
     CmdReadDiscreteInputs
-        :: UnitId
+        :: TPU
         -> Range Address
         -> Command m [Word8]
 
     CmdReadHoldingRegisters
-        :: UnitId
+        :: TPU
         -> Range Address
         -> Command m [Word16]
 
     CmdReadInputRegisters
-        :: UnitId
+        :: TPU
         -> Range Address
         -> Command m [Word16]
 
     CmdWriteSingleCoil
-        :: UnitId
+        :: TPU
         -> Address
         -> Bool
         -> Command m ()
 
     CmdWriteMultipleCoils
-        :: UnitId
+        :: TPU
         -> Address
         -> [Bool]
         -> Command m ()
 
     CmdWriteSingleRegister
-        :: UnitId
+        :: TPU
         -> Address
         -> Word16
         -> Command m ()
 
     CmdWriteMultipleRegisters
-        :: UnitId
+        :: TPU
         -> Address
         -> [Word16]
         -> Command m ()
@@ -157,7 +160,7 @@ data Batch m
 
 data BatchedReads m a
    = BatchedReads
-     { batchedReadUnitId :: !UnitId
+     { batchedReadTpu :: !TPU
      , batchedReadRange :: !(Range Address)
      , batchedReadConsumers :: ![(Range Address, Either SomeException [a] -> m ())]
      }
@@ -165,7 +168,7 @@ data BatchedReads m a
 -- | Batched version of 'CmdWriteSingleRegister' and 'CmdWriteMultipleRegisters'.
 data BatchedWriteRegisters m
    = MkBatchedWriteRegisters
-     { bwrUnitId :: !UnitId
+     { bwrTpu :: !TPU
      , bwrRange :: !(Range Address)
      , bwrValues :: ![Word16]
      , bwrOriginalWrites :: ![Either SomeException () -> m ()]
@@ -259,24 +262,24 @@ execCommand
 execCommand = \case
     CmdPerformIO io -> liftIO io
     CmdThrow err -> throwM err
-    CmdCommand                   uid fc fdata
-      -> command_                uid fc fdata
-    CmdReadCoils                 uid addressRange
-      -> readCoils_              uid addressRange
-    CmdReadDiscreteInputs        uid addressRange
-      -> readDiscreteInputs_     uid addressRange
-    CmdReadHoldingRegisters      uid addressRange
-      -> readHoldingRegisters_   uid addressRange
-    CmdReadInputRegisters        uid addressRange
-      -> readInputRegisters_     uid addressRange
-    CmdWriteSingleCoil           uid addr value
-      -> writeSingleCoil_        uid addr value
-    CmdWriteMultipleCoils        uid addr values
-      -> writeMultipleCoils_     uid addr values
-    CmdWriteSingleRegister       uid addr value
-      -> writeSingleRegister_    uid addr value
-    CmdWriteMultipleRegisters    uid addr values
-      -> writeMultipleRegisters_ uid addr values
+    CmdCommand                   tpu fc fdata
+      -> command_                tpu fc fdata
+    CmdReadCoils                 tpu addressRange
+      -> readCoils_              tpu addressRange
+    CmdReadDiscreteInputs        tpu addressRange
+      -> readDiscreteInputs_     tpu addressRange
+    CmdReadHoldingRegisters      tpu addressRange
+      -> readHoldingRegisters_   tpu addressRange
+    CmdReadInputRegisters        tpu addressRange
+      -> readInputRegisters_     tpu addressRange
+    CmdWriteSingleCoil           tpu addr value
+      -> writeSingleCoil_        tpu addr value
+    CmdWriteMultipleCoils        tpu addr values
+      -> writeMultipleCoils_     tpu addr values
+    CmdWriteSingleRegister       tpu addr value
+      -> writeSingleRegister_    tpu addr value
+    CmdWriteMultipleRegisters    tpu addr values
+      -> writeMultipleRegisters_ tpu addr values
 
 execScheduledCommand
     :: (MonadIO m, MonadCatch m)
@@ -468,27 +471,27 @@ runBatch = \case
     BatchedReadInputRegisters   br -> runBatchedReads readInputRegisters_   br
 
     BatchedWriteRegisters bwr -> do
-        eResult <- try $ writeMultipleRegisters_ uid (Range.begin range) values
+        eResult <- try $ writeMultipleRegisters_ tpu (Range.begin range) values
         case eResult of
           Left exc -> traverse_ ($ Left exc) originalWrites
           Right () -> traverse_ ($ Right ()) originalWrites
       where
-        MkBatchedWriteRegisters uid range values originalWrites = bwr
+        MkBatchedWriteRegisters tpu range values originalWrites = bwr
 
 runBatchedReads
     :: forall m a. (MonadIO m, MonadCatch m)
-    => (UnitId -> Range Address -> ReaderT Config m [a])
+    => (TPU -> Range Address -> ReaderT Config m [a])
     -> BatchedReads (ReaderT Config m) a
     -> ReaderT Config m ()
 runBatchedReads readCommand br = do
-    eResult <- try $ readCommand uid batchedRange
+    eResult <- try $ readCommand tpu batchedRange
     case eResult of
       Left exc ->
         traverse_ (\(_, write) -> write $ Left exc) consumers
       Right batchedData ->
         traverse_ (processConsumer batchedData) consumers
   where
-    BatchedReads uid batchedRange consumers = br
+    BatchedReads tpu batchedRange consumers = br
 
     processConsumer
         :: [a]
@@ -557,50 +560,50 @@ growBatch
 growBatch _cfg NotBatched {} _ = Nothing
 growBatch cfg (BatchedReadCoils br) (Batcher.Scheduled cmd write) =
     case cmd of
-      CmdReadCoils uid range ->
+      CmdReadCoils tpu range ->
         BatchedReadCoils <$>
-          growReadBatch (bCfgReadCoils cfg) br uid range write
+          growReadBatch (bCfgReadCoils cfg) br tpu range write
       _ -> Nothing
 growBatch cfg (BatchedReadDiscreteInputs br) (Batcher.Scheduled cmd write) =
     case cmd of
-      CmdReadDiscreteInputs uid range ->
+      CmdReadDiscreteInputs tpu range ->
         BatchedReadDiscreteInputs <$>
-          growReadBatch (bCfgReadDiscreteInputs cfg) br uid range write
+          growReadBatch (bCfgReadDiscreteInputs cfg) br tpu range write
       _ -> Nothing
 growBatch cfg (BatchedReadHoldingRegisters br) (Batcher.Scheduled cmd write) =
     case cmd of
-      CmdReadHoldingRegisters uid range ->
+      CmdReadHoldingRegisters tpu range ->
         BatchedReadHoldingRegisters <$>
-          growReadBatch (bCfgReadHoldingRegisters cfg) br uid range write
+          growReadBatch (bCfgReadHoldingRegisters cfg) br tpu range write
       _ -> Nothing
 growBatch cfg (BatchedReadInputRegisters br) (Batcher.Scheduled cmd write) =
     case cmd of
-      CmdReadInputRegisters uid range ->
+      CmdReadInputRegisters tpu range ->
         BatchedReadInputRegisters <$>
-          growReadBatch (bCfgReadInputRegisters cfg) br uid range write
+          growReadBatch (bCfgReadInputRegisters cfg) br tpu range write
       _ -> Nothing
 growBatch _cfg (BatchedWriteRegisters bwr) (Batcher.Scheduled cmd write) =
     case cmd of
-      CmdWriteSingleRegister uid address value  ->
-          batchWrite bwr write uid address [value]
-      CmdWriteMultipleRegisters uid address values ->
-          batchWrite bwr write uid address values
+      CmdWriteSingleRegister tpu address value  ->
+          batchWrite bwr write tpu address [value]
+      CmdWriteMultipleRegisters tpu address values ->
+          batchWrite bwr write tpu address values
       _ -> Nothing
 
 growReadBatch
     :: BatchReadConfig
     -> BatchedReads m a
-    -> UnitId
+    -> TPU
     -> Range Address
     -> (Either SomeException [a] -> m ())
     -> Maybe (BatchedReads m a)
-growReadBatch brCfg br uid range write =
+growReadBatch brCfg br tpu range write =
     if canBatch
     then Just batched
     else Nothing
   where
     canBatch =
-           uid == batchedReadUnitId br
+           tpu == batchedReadTpu br
         && Range.begin range >= Range.begin batchedRange
         && skipped <= brCfgMaxSkip brCfg
 
@@ -615,11 +618,11 @@ growReadBatch brCfg br uid range write =
 batchWrite
     :: BatchedWriteRegisters m
     -> (Either SomeException () -> m ())
-    -> UnitId
+    -> TPU
     -> Address
     -> [Word16]
     -> Maybe (Batch m)
-batchWrite bwr write uid address values
+batchWrite bwr write tpu address values
     | canBatch  = Just batched
     | otherwise = Nothing
   where
@@ -631,7 +634,7 @@ batchWrite bwr write uid address values
                  }
 
     canBatch =
-           uid == bwrUnitId bwr
+           tpu == bwrTpu bwr
         && address >= Range.begin batchedRange
         && Range.gap batchedRange writeRange == 0
 
@@ -641,30 +644,30 @@ batchWrite bwr write uid address values
 initBatch :: BatchConfig -> ScheduledCommand m -> Batch m
 initBatch cfg scheduled@(Batcher.Scheduled cmd write) =
     case cmd of
-      CmdReadCoils uid range | brCfgEnableBatching (bCfgReadCoils cfg) ->
+      CmdReadCoils tpu range | brCfgEnableBatching (bCfgReadCoils cfg) ->
         BatchedReadCoils $
-          initReadBatch uid range write
-      CmdReadDiscreteInputs uid range | brCfgEnableBatching (bCfgReadDiscreteInputs cfg) ->
+          initReadBatch tpu range write
+      CmdReadDiscreteInputs tpu range | brCfgEnableBatching (bCfgReadDiscreteInputs cfg) ->
         BatchedReadDiscreteInputs $
-          initReadBatch uid range write
-      CmdReadHoldingRegisters uid range | brCfgEnableBatching (bCfgReadHoldingRegisters cfg) ->
+          initReadBatch tpu range write
+      CmdReadHoldingRegisters tpu range | brCfgEnableBatching (bCfgReadHoldingRegisters cfg) ->
         BatchedReadHoldingRegisters $
-          initReadBatch uid range write
-      CmdReadInputRegisters uid range | brCfgEnableBatching (bCfgReadInputRegisters cfg) ->
+          initReadBatch tpu range write
+      CmdReadInputRegisters tpu range | brCfgEnableBatching (bCfgReadInputRegisters cfg) ->
         BatchedReadInputRegisters $
-          initReadBatch uid range write
-      CmdWriteSingleRegister uid address value | bCfgBatchWriteSingleRegister cfg ->
+          initReadBatch tpu range write
+      CmdWriteSingleRegister tpu address value | bCfgBatchWriteSingleRegister cfg ->
         BatchedWriteRegisters
         MkBatchedWriteRegisters
-        { bwrUnitId = uid
+        { bwrTpu = tpu
         , bwrRange = Range.singleton address
         , bwrValues = [value]
         , bwrOriginalWrites = [write]
         }
-      CmdWriteMultipleRegisters uid address values ->
+      CmdWriteMultipleRegisters tpu address values ->
         BatchedWriteRegisters
         MkBatchedWriteRegisters
-        { bwrUnitId = uid
+        { bwrTpu = tpu
         , bwrRange = Range.fromSize address (Address . fromIntegral $ length values)
         , bwrValues = values
         , bwrOriginalWrites = [write]
@@ -672,13 +675,13 @@ initBatch cfg scheduled@(Batcher.Scheduled cmd write) =
       _ -> NotBatched scheduled
 
 initReadBatch
-    :: UnitId
+    :: TPU
     -> Range Address
     -> (Either SomeException [a] -> m ())
     -> BatchedReads m a
-initReadBatch uid range write =
+initReadBatch tpu range write =
     BatchedReads
-    { batchedReadUnitId = uid
+    { batchedReadTpu = tpu
     , batchedReadRange = range
     , batchedReadConsumers = [(range, write)]
     }
@@ -687,71 +690,71 @@ initReadBatch uid range write =
 -- | Sends a raw MODBUS command.
 command
     :: (MonadIO m, MonadThrow m)
-    => UnitId
+    => TPU
     -> FunctionCode -- ^ PDU function code.
     -> BB.Builder -- ^ PDU data.
     -> Session m Response
-command uid fc fdata =
-    Session $ Batcher.schedule $ CmdCommand uid fc fdata
+command tpu fc fdata =
+    Session $ Batcher.schedule $ CmdCommand tpu fc fdata
 
 readCoils
     :: (MonadIO m, MonadThrow m)
-    => UnitId
+    => TPU
     -> Range Address
     -> Session m [Word8]
-readCoils uid range =
-    Session $ Batcher.schedule $ CmdReadCoils uid range
+readCoils tpu range =
+    Session $ Batcher.schedule $ CmdReadCoils tpu range
 
 readDiscreteInputs
     :: (MonadIO m, MonadThrow m)
-    => UnitId
+    => TPU
     -> Range Address
     -> Session m [Word8]
-readDiscreteInputs uid range =
-    Session $ Batcher.schedule $ CmdReadDiscreteInputs uid range
+readDiscreteInputs tpu range =
+    Session $ Batcher.schedule $ CmdReadDiscreteInputs tpu range
 
 readHoldingRegisters
     :: (MonadIO m, MonadThrow m)
-    => UnitId
+    => TPU
     -> Range Address
     -> Session m [Word16]
-readHoldingRegisters uid range =
-    Session $ Batcher.schedule $ CmdReadHoldingRegisters uid range
+readHoldingRegisters tpu range =
+    Session $ Batcher.schedule $ CmdReadHoldingRegisters tpu range
 
 readInputRegisters
     :: (MonadIO m, MonadThrow m)
-    => UnitId
+    => TPU
     -> Range Address
     -> Session m [Word16]
-readInputRegisters uid range =
-    Session $ Batcher.schedule $ CmdReadInputRegisters uid range
+readInputRegisters tpu range =
+    Session $ Batcher.schedule $ CmdReadInputRegisters tpu range
 
 writeSingleCoil
     :: (MonadIO m, MonadThrow m)
-    => UnitId
+    => TPU
     -> Address
     -> Bool
     -> Session m ()
-writeSingleCoil uid addr value =
-    Session $ Batcher.schedule $ CmdWriteSingleCoil uid addr value
+writeSingleCoil tpu addr value =
+    Session $ Batcher.schedule $ CmdWriteSingleCoil tpu addr value
 
 writeSingleRegister
     :: (MonadIO m, MonadThrow m)
-    => UnitId
+    => TPU
     -> Address
     -> Word16 -- ^ Register value.
     -> Session m ()
-writeSingleRegister uid addr value =
-    Session $ Batcher.schedule $ CmdWriteSingleRegister uid addr value
+writeSingleRegister tpu addr value =
+    Session $ Batcher.schedule $ CmdWriteSingleRegister tpu addr value
 
 writeMultipleRegisters
     :: (MonadIO m, MonadThrow m)
-    => UnitId
+    => TPU
     -> Address
     -> [Word16] -- ^ Register values to be written
     -> Session m ()
-writeMultipleRegisters uid addr values =
-    Session $ Batcher.schedule $ CmdWriteMultipleRegisters uid addr values
+writeMultipleRegisters tpu addr values =
+    Session $ Batcher.schedule $ CmdWriteMultipleRegisters tpu addr values
 
 --------------------------------------------------------------------------------
 -- Pretty printing (for debugging and error messages)
@@ -769,26 +772,31 @@ prettyCommand :: Command m r -> String
 prettyCommand = \case
     CmdPerformIO _io -> "CmdPerformIO <<io>>"
     CmdThrow err -> "CmdThrow " <> show err
-    CmdCommand uid fc bs ->
-        "CmdCommand " <> unwords [prettyUnitId uid, show fc, show (BB.toLazyByteString bs)]
-    CmdReadCoils uid range ->
-        "CmdReadCoils " <> unwords [prettyUnitId uid, prettyAddressRange range]
-    CmdReadDiscreteInputs uid range ->
-        "CmdReadDiscreteInputs " <> unwords [prettyUnitId uid, prettyAddressRange range]
-    CmdReadHoldingRegisters uid range ->
-        "CmdReadHoldingRegisters " <> unwords [prettyUnitId uid, prettyAddressRange range]
-    CmdReadInputRegisters uid range ->
-        "CmdReadInputRegisters " <> unwords [prettyUnitId uid, prettyAddressRange range]
-    CmdWriteSingleCoil uid addr value ->
-        "CmdWriteSingleCoil " <> unwords [prettyUnitId uid, prettyAddress addr, show value]
-    CmdWriteMultipleCoils uid addr values ->
-        "CmdWriteMultipleCoils " <> unwords [prettyUnitId uid, prettyAddress addr, show values]
-    CmdWriteSingleRegister uid addr value ->
-        "CmdWriteSingleRegister " <> unwords [prettyUnitId uid, prettyAddress addr, show value]
-    CmdWriteMultipleRegisters uid addr values ->
-        "CmdWriteMultipleRegisters " <> unwords [prettyUnitId uid, prettyAddress addr, show values]
+    CmdCommand tpu fc bs ->
+        "CmdCommand " <> unwords [prettyTpu tpu, show fc, show (BB.toLazyByteString bs)]
+    CmdReadCoils tpu range ->
+        "CmdReadCoils " <> unwords [prettyTpu tpu, prettyAddressRange range]
+    CmdReadDiscreteInputs tpu range ->
+        "CmdReadDiscreteInputs " <> unwords [prettyTpu tpu, prettyAddressRange range]
+    CmdReadHoldingRegisters tpu range ->
+        "CmdReadHoldingRegisters " <> unwords [prettyTpu tpu, prettyAddressRange range]
+    CmdReadInputRegisters tpu range ->
+        "CmdReadInputRegisters " <> unwords [prettyTpu tpu, prettyAddressRange range]
+    CmdWriteSingleCoil tpu addr value ->
+        "CmdWriteSingleCoil " <> unwords [prettyTpu tpu, prettyAddress addr, show value]
+    CmdWriteMultipleCoils tpu addr values ->
+        "CmdWriteMultipleCoils " <> unwords [prettyTpu tpu, prettyAddress addr, show values]
+    CmdWriteSingleRegister tpu addr value ->
+        "CmdWriteSingleRegister " <> unwords [prettyTpu tpu, prettyAddress addr, show value]
+    CmdWriteMultipleRegisters tpu addr values ->
+        "CmdWriteMultipleRegisters " <> unwords [prettyTpu tpu, prettyAddress addr, show values]
 
+prettyTpu :: TPU -> String
+prettyTpu (TPU tid pid uid) =
+    prettyTransactionId tid <> " " <> show pid <> " " <> prettyUnitId uid
 
+prettyTransactionId :: TransactionId -> String
+prettyTransactionId (TransactionId n) = show n
 
 prettyUnitId :: UnitId -> String
 prettyUnitId (UnitId n) = "#" <> show n
@@ -809,13 +817,13 @@ prettyBatch = \case
         "BatchedReadInputRegisters" <> " " <> prettyBatchedReads br
     BatchedWriteRegisters bwr ->
         "BatchedWriteRegisters"
-        <> " " <> prettyUnitId (bwrUnitId bwr)
+        <> " " <> prettyTpu (bwrTpu bwr)
         <> " " <> prettyAddressRange (bwrRange bwr)
         <> " " <> show (bwrValues bwr)
 
 prettyBatchedReads :: BatchedReads m a -> String
 prettyBatchedReads br =
-    prettyUnitId (batchedReadUnitId br)
+    prettyTpu (batchedReadTpu br)
     <> " " <> prettyAddressRange (batchedReadRange br)
     <> " [" <> intercalate ", " (map (prettyAddressRange . fst) $ batchedReadConsumers br) <> "]"
 

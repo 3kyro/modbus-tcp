@@ -15,7 +15,7 @@ import qualified "modbus-tcp" Data.Range as Range
 import qualified "QuickCheck" Test.QuickCheck as QC
 import           "tasty" Test.Tasty
 import qualified "tasty-quickcheck" Test.Tasty.QuickCheck as QC
-import           Network.Modbus.TCP.Internal.Protocol
+import           Network.Modbus.Internal.TCP.Protocol
 
 
 

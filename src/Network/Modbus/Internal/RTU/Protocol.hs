@@ -4,7 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# language ScopedTypeVariables #-}
 
-module Network.Modbus.RTU.Internal.Protocol
+module Network.Modbus.Internal.RTU.Protocol
     ( -- Modbus Protocol
       ADU (..)
     , Config (..)
@@ -31,8 +31,11 @@ module Network.Modbus.RTU.Internal.Protocol
     , writeMultipleRegisters_
     ) where
 
+
+
 import "attoparsec" Data.Attoparsec.ByteString ( anyWord8 )
 import qualified "attoparsec" Data.Attoparsec.ByteString as AB
+import "base" Control.Monad ( replicateM )
 import "base" Control.Monad.IO.Class ( MonadIO, liftIO )
 import "base" Data.Bool ( bool )
 import "base" Data.Functor ( void )
@@ -47,8 +50,8 @@ import "mtl" Control.Monad.Reader ( ask )
 import "transformers" Control.Monad.Trans.Class ( lift )
 import "transformers" Control.Monad.Trans.Reader ( ReaderT )
 
-import "this" Network.Modbus.Common.Protocol
-import "this" Network.Modbus.RTU.Internal.CRC16 (digest16)
+import "this" Network.Modbus.Protocol
+import "this" Network.Modbus.Internal.RTU.CRC16 (digest16)
 
 
 -- | On MODBUS Serial Line, the Address field only contains the server address.
@@ -354,3 +357,13 @@ verifyCRC (RADU uid len pdu _) =
     bsFun = builderToByteString $ functionCodeBuilder $ pduFunction pdu
     bsLen = B.singleton len
     bsData = pduData pdu
+
+-- TODO (RvD): Get (V.Vector Word8)
+getW8s :: Word8 -> AB.Parser [Word8]
+getW8s  n = do
+    bs <- AB.take (fromIntegral n)
+    pure $ B.unpack bs
+
+-- TODO (RvD): Get (V.Vector Word16)
+getW16s :: Word8 -> AB.Parser [Word16]
+getW16s n = replicateM (fromIntegral $ n `div` 2) anyWord16be

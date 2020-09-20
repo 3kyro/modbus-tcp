@@ -4,7 +4,7 @@
 {-# language ScopedTypeVariables #-}
 {-# language StandaloneDeriving #-}
 
-module Network.Modbus.Common.Protocol
+module Network.Modbus.Protocol
   ( -- Entity addresses
     Address(..)
   , ToAddress(..)
@@ -42,15 +42,12 @@ module Network.Modbus.Common.Protocol
   , builderToByteString
 
     -- Utils
-  ,getW8s
-  ,getW16s
   ,(<&>)
   ,anyWord16be
   ) where
 
 import "attoparsec" Data.Attoparsec.ByteString ( anyWord8 )
 import qualified "attoparsec" Data.Attoparsec.ByteString as AB
-import "base" Control.Monad ( replicateM )
 import "base" Data.Word ( Word8, Word16 )
 import "base" Data.Typeable ( Typeable )
 import qualified "bytestring" Data.ByteString as B
@@ -60,6 +57,51 @@ import "exceptions" Control.Monad.Catch
   ( Exception )
 import           "this" Data.Range ( Range )
 import qualified "this" Data.Range as Range
+
+--------------------------------------------------------------------------------
+-- | Modbus TCP/RTU Client configuration.
+--
+-- The following sections of Modbus over Serial Line: Specification and Implementation Guide V1.02
+-- (https://www.modbus.org/docs/Modbus_over_serial_line_V1_02.pdf)
+-- must be taken into consideration in order to build a valid RTU configuration:
+--
+-- - 2.5.1 RTU Transmission Mode
+data Config
+   = Config
+     { cfgWrite :: !(B.ByteString -> IO Int)
+       -- ^ Action that writes bytes.
+       --
+       -- For Modbus TCP, you can use Network.Socket.ByteString.send applied to some socket,
+       -- for Modbus RTU you can use System.Hardware.Serialport.send applied to some
+       -- serial port, or some custom function.
+     , cfgRead :: !(IO B.ByteString)
+       -- ^ Action that reads bytes.
+       --
+       -- For Modbus TCP, you can use  Network.Socket.ByteString.recv applied to some socket,
+       -- for Modbus RTU, you can use System.Hardware.Serialport.recv applied to some
+       -- serial port, or some custom function.
+     , cfgCommandTimeout :: !Int
+       -- ^ Time limit in microseconds for each command.
+     , cfgRetryWhen :: !RetryPredicate
+       -- ^ Predicate that determines whether a failed command should
+       -- be retried.
+     , cfgEnableBroadcasts :: !Bool
+       -- ^ When broadcasts are enabled any command send to
+       -- 'broadcast' is regarded as a broadcast. No response is
+       -- expected after sending a broadcast. Attempts to broadcast a
+       -- command that expects a response will throw an
+       -- `BroadcastRequiresData` error.
+     }
+
+-- | Predicate applied to exceptions raised while executing a command
+-- in order to determine if the command should be retried.
+type RetryPredicate
+   =  Int -- ^ Number of tries.
+   -> ModbusException
+      -- ^ Exception raised by the latest attempt to execute a command.
+   -> Bool
+      -- ^ If 'True' the command will be retried, if 'False' the
+      -- aforementioned exception will be rethrown.
 
 
 --------------------------------------------------------------------------------
@@ -173,50 +215,6 @@ mkInputRegisterNumber = mkEntityNumber InputRegisterNumber 3
 mkHoldingRegisterNumber :: Int -> Maybe HoldingRegisterNumber
 mkHoldingRegisterNumber = mkEntityNumber HoldingRegisterNumber 4
 
---------------------------------------------------------------------------------
--- | Modbus RTU client configuration.
---
--- The following sections of Modbus over Serial Line: Specification and Implementation Guide V1.02
--- (https://www.modbus.org/docs/Modbus_over_serial_line_V1_02.pdf)
--- must be taken into consideration in order to build a valid RTU configuration:
---
--- - 2.5.1 RTU Transmission Mode
-data Config
-   = Config
-     { cfgWrite :: !(B.ByteString -> IO Int)
-       -- ^ Action that writes bytes.
-       --
-       -- For Modbus TCP, you can use Network.Socket.ByteString.send applied to some socket,
-       -- for Modbus RTU you can use System.Hardware.Serialport.send applied to some
-       -- serial port, or some custom function.
-     , cfgRead :: !(IO B.ByteString)
-       -- ^ Action that reads bytes.
-       --
-       -- For Modbus TCP, you can use  Network.Socket.ByteString.recv applied to some socket,
-       -- for Modbus RTU, you can use System.Hardware.Serialport.recv applied to some
-       -- serial port, or some custom function.
-     , cfgCommandTimeout :: !Int
-       -- ^ Time limit in microseconds for each command.
-     , cfgRetryWhen :: !RetryPredicate
-       -- ^ Predicate that determines whether a failed command should
-       -- be retried.
-     , cfgEnableBroadcasts :: !Bool
-       -- ^ When broadcasts are enabled any command send to
-       -- 'broadcast' is regarded as a broadcast. No response is
-       -- expected after sending a broadcast. Attempts to broadcast a
-       -- command that expects a response will throw an
-       -- `BroadcastRequiresData` error.
-     }
-
--- | Predicate applied to exceptions raised while executing a command
--- in order to determine if the command should be retried.
-type RetryPredicate
-   =  Int -- ^ Number of tries.
-   -> ModbusException
-      -- ^ Exception raised by the latest attempt to execute a command.
-   -> Bool
-      -- ^ If 'True' the command will be retried, if 'False' the
-      -- aforementioned exception will be rethrown.
 
 --------------------------------------------------------------------------------
 -- Protocol objects
@@ -425,7 +423,6 @@ exceptionCodeParser = anyWord8 >>= \case
     0x0B -> pure GatewayTargetDeviceFailedToRespond
     other -> fail $ "invalid ExceptionCode " <> show other
 
-
 anyWord16be :: AB.Parser Word16
 anyWord16be = do
     h <- fromIntegral <$> anyWord8
@@ -504,16 +501,6 @@ coilsBuilder bs =
   where
     packedCoils :: [Word8]
     packedCoils = error "todo" bs
-
--- TODO (RvD): Get (V.Vector Word8)
-getW8s :: Word8 -> AB.Parser [Word8]
-getW8s  n = do
-    bs <- AB.take (fromIntegral n)
-    pure $ B.unpack bs
-
--- TODO (RvD): Get (V.Vector Word16)
-getW16s :: Word8 -> AB.Parser [Word16]
-getW16s n = replicateM (fromIntegral $ n `div` 2) anyWord16be
 
 builderToByteString :: BB.Builder -> B.ByteString
 builderToByteString = BL.toStrict . BB.toLazyByteString

@@ -53,9 +53,9 @@ module Network.Modbus.RTU
   , writeMultipleRegisters
   ) where
 
-import Network.Modbus.Common.Protocol
-import Network.Modbus.RTU.Internal.Protocol
-import Network.Modbus.RTU.Internal.Batch
+import Network.Modbus.Protocol
+import Network.Modbus.Internal.RTU.Protocol
+import Network.Modbus.Internal.RTU.Batch
 
 
 
