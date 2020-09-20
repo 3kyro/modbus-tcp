@@ -90,7 +90,7 @@ instance QC.Arbitrary FunctionCode where
         , pure GetCommEventLog
         , pure WriteMultipleCoils
         , pure WriteMultipleRegisters
-        , pure ReportSlaveID
+        , pure ReportServerID
         , pure ReadFileRecord
         , pure WriteFileRecord
         , pure MaskWriteRegister
@@ -122,9 +122,9 @@ instance QC.Arbitrary ExceptionCode where
         [ IllegalFunction
         , IllegalDataAddress
         , IllegalDataValue
-        , SlaveDeviceFailure
+        , ServerDeviceFailure
         , Acknowledge
-        , SlaveDeviceBusy
+        , ServerDeviceBusy
         , MemoryParityError
         , GatewayPathUnavailable
         , GatewayTargetDeviceFailedToRespond

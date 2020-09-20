@@ -107,11 +107,11 @@ data ProtocolId
    | OtherProtocolId !Word16
      deriving (Eq, Ord, Show)
 
--- | Slave address (255 if not used).
+-- | Server address (255 if not used).
 --
 -- Unit identifier is used with Modbus/TCP devices that are composites
 -- of several Modbus devices, e.g. on Modbus/TCP to Modbus RTU
--- gateways. In such case, the unit identifier tells the Slave Address
+-- gateways. In such case, the unit identifier tells the Server Address
 -- of the device behind the gateway. Natively Modbus/TCP-capable
 -- devices usually ignore the Unit Identifier.
 newtype UnitId
@@ -374,7 +374,7 @@ data FunctionCode
      -- | See: /MODBUS Application Protocol Specification V1.1b, section 6.12/
    | WriteMultipleRegisters
      -- | See: /MODBUS Application Protocol Specification V1.1b, section 6.13/
-   | ReportSlaveID
+   | ReportServerID
      -- | See: /MODBUS Application Protocol Specification V1.1b, section 6.14/
    | ReadFileRecord
      -- | See: /MODBUS Application Protocol Specification V1.1b, section 6.15/
@@ -398,15 +398,15 @@ data FunctionCode
 -- | See: /MODBUS Application Protocol Specification V1.1b, section 7/
 data ExceptionCode
    = -- | The function code received in the query is not an allowable
-     -- action for the server (or slave). This may be because the
+     -- action for the server (or Server). This may be because the
      -- function code is only applicable to newer devices, and was not
      -- implemented in the unit selected. It could also indicate that
-     -- the server (or slave) is in the wrong state to process a
+     -- the server (or Server) is in the wrong state to process a
      -- request of this type, for example because it is unconfigured
      -- and is being asked to return register values.
      IllegalFunction
      -- | The data address received in the query is not an allowable
-     -- address for the server (or slave). More specifically, the
+     -- address for the server (or Server). More specifically, the
      -- combination of reference number and transfer length is
      -- invalid. For a controller with 100 registers, the PDU addresses
      -- the first register as 0, and the last one as 99. If a request
@@ -420,7 +420,7 @@ data ExceptionCode
      -- there is no register with address 100.
    | IllegalDataAddress
      -- | A value contained in the query data field is not an allowable
-     -- value for server (or slave). This indicates a fault in the
+     -- value for server (or Server). This indicates a fault in the
      -- structure of the remainder of a complex request, such as that
      -- the implied length is incorrect. It specifically does NOT mean
      -- that a data item submitted for storage in a register has a
@@ -428,22 +428,22 @@ data ExceptionCode
      -- the MODBUS protocol is unaware of the significance of any
      -- particular value of any particular register.
    | IllegalDataValue
-     -- | An unrecoverable error occurred while the server (or slave)
+     -- | An unrecoverable error occurred while the server (or Server)
      -- was attempting to perform the requested action.
-   | SlaveDeviceFailure
+   | ServerDeviceFailure
      -- | Specialized use in conjunction with programming commands. The
-     -- server (or slave) has accepted the request and is processing
+     -- server (or Server) has accepted the request and is processing
      -- it, but a long duration of time will be required to do so. This
      -- response is returned to prevent a timeout error from occurring
-     -- in the client (or master). The client (or master) can next
+     -- in the client. The client can next
      -- issue a Poll Program Complete message to determine if
      -- processing is completed.
    | Acknowledge
      -- | Specialized use in conjunction with programming commands. The
-     -- server (or slave) is engaged in processing a long–duration
-     -- program command. The client (or master) should retransmit the
-     -- message later when the server (or slave) is free.
-   | SlaveDeviceBusy
+     -- server (or Server) is engaged in processing a long–duration
+     -- program command. The client should retransmit the
+     -- message later when the server (or Server) is free.
+   | ServerDeviceBusy
      -- | Specialized use in conjunction with function codes
      -- 'ReadFileRecord' and 'WriteFileRecord' and reference type 6, to
      -- indicate that the extended file area failed to pass a
@@ -537,7 +537,7 @@ functionCodeParser = dec <$> anyWord8
       0x0c -> GetCommEventLog
       0x0f -> WriteMultipleCoils
       0x10 -> WriteMultipleRegisters
-      0x11 -> ReportSlaveID
+      0x11 -> ReportServerID
       0x14 -> ReadFileRecord
       0x15 -> WriteFileRecord
       0x16 -> MaskWriteRegister
@@ -557,9 +557,9 @@ exceptionCodeParser = anyWord8 >>= \case
     0x01 -> pure IllegalFunction
     0x02 -> pure IllegalDataAddress
     0x03 -> pure IllegalDataValue
-    0x04 -> pure SlaveDeviceFailure
+    0x04 -> pure ServerDeviceFailure
     0x05 -> pure Acknowledge
-    0x06 -> pure SlaveDeviceBusy
+    0x06 -> pure ServerDeviceBusy
     0x08 -> pure MemoryParityError
     0x0A -> pure GatewayPathUnavailable
     0x0B -> pure GatewayTargetDeviceFailedToRespond
@@ -606,7 +606,7 @@ functionCodeBuilder = BB.word8 . enc
       GetCommEventLog                -> 0x0C
       WriteMultipleCoils             -> 0x0F
       WriteMultipleRegisters         -> 0x10
-      ReportSlaveID                  -> 0x11
+      ReportServerID                  -> 0x11
       ReadFileRecord                 -> 0x14
       WriteFileRecord                -> 0x15
       MaskWriteRegister              -> 0x16
@@ -625,9 +625,9 @@ exceptionCodeBuilder = BB.word8 . enc
       IllegalFunction                    -> 0x01
       IllegalDataAddress                 -> 0x02
       IllegalDataValue                   -> 0x03
-      SlaveDeviceFailure                 -> 0x04
+      ServerDeviceFailure                 -> 0x04
       Acknowledge                        -> 0x05
-      SlaveDeviceBusy                    -> 0x06
+      ServerDeviceBusy                    -> 0x06
       MemoryParityError                  -> 0x08
       GatewayPathUnavailable             -> 0x0A
       GatewayTargetDeviceFailedToRespond -> 0x0B
