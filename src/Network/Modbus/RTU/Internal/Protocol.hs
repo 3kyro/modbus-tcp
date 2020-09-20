@@ -50,16 +50,14 @@ import "transformers" Control.Monad.Trans.Reader ( ReaderT )
 import "this" Network.Modbus.Common.Protocol
 import "this" Network.Modbus.RTU.Internal.CRC16 (digest16)
 
+
+-- | On MODBUS Serial Line, the Address field only contains the server address.
+-- Valid  server  nodes  addresses are  in  the  range  of  0  –  247  decimal.
+-- The  individual server devices are assigned addresses in the range of 1 – 247.
+-- A client addresses a server by placing the server address in the address field of the message.
+-- When the server returns its response, it places its own address in the response address field to let the client
+-- know which server is responding
 -- See: /MODBUS over serial line specification and implementation guide V1.02, section 2.3/
-
--- On MODBUS Serial Line, the Address field only contains the slave address.
--- As  described  in  the  previous  section  the  valid  slave  nodes  addresses
--- are  in  the  range  of  0  –  247  decimal.    The  individual  slavedevices are
--- assigned addresses in the range of 1 – 247.  A master addresses a slave by placing
--- the slave address in the address field of the message.  When the slave returns its
--- response, it places its own address in the response address field to let the master
--- know which slave is responding
-
 newtype UnitId
       = UnitId { unUnitId :: Word8 }
         deriving (Enum, Eq, Num, Ord, Read, Show)

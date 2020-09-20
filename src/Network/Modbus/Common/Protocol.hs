@@ -174,19 +174,27 @@ mkHoldingRegisterNumber :: Int -> Maybe HoldingRegisterNumber
 mkHoldingRegisterNumber = mkEntityNumber HoldingRegisterNumber 4
 
 --------------------------------------------------------------------------------
-
+-- | Modbus RTU client configuration.
+--
+-- The following sections of Modbus over Serial Line: Specification and Implementation Guide V1.02
+-- (https://www.modbus.org/docs/Modbus_over_serial_line_V1_02.pdf)
+-- must be taken into consideration in order to build a valid RTU configuration:
+--
+-- - 2.5.1 RTU Transmission Mode
 data Config
    = Config
      { cfgWrite :: !(B.ByteString -> IO Int)
        -- ^ Action that writes bytes.
        --
-       -- You can use Network.Socket.ByteString.send applied to some
-       -- socket, or some custom function.
+       -- For Modbus TCP, you can use Network.Socket.ByteString.send applied to some socket,
+       -- for Modbus RTU you can use System.Hardware.Serialport.send applied to some
+       -- serial port, or some custom function.
      , cfgRead :: !(IO B.ByteString)
        -- ^ Action that reads bytes.
        --
-       -- You can use Network.Socket.ByteString.recv applied to some
-       -- socket, or some custom function.
+       -- For Modbus TCP, you can use  Network.Socket.ByteString.recv applied to some socket,
+       -- for Modbus RTU, you can use System.Hardware.Serialport.recv applied to some
+       -- serial port, or some custom function.
      , cfgCommandTimeout :: !Int
        -- ^ Time limit in microseconds for each command.
      , cfgRetryWhen :: !RetryPredicate
@@ -209,7 +217,6 @@ type RetryPredicate
    -> Bool
       -- ^ If 'True' the command will be retried, if 'False' the
       -- aforementioned exception will be rethrown.
-
 
 --------------------------------------------------------------------------------
 -- Protocol objects
