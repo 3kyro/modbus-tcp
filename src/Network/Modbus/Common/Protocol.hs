@@ -1,4 +1,3 @@
-{-# language BangPatterns #-}
 {-# language GeneralizedNewtypeDeriving #-}
 {-# language LambdaCase #-}
 {-# language PackageImports #-}
@@ -8,7 +7,9 @@
 {-# OPTIONS_HADDOCK not-home #-}
 
 module Network.Modbus.Common.Protocol
-  ( Address(..)
+  ( -- * Modbus Protocol
+    -- ** Entity addresses
+    Address(..)
   , ToAddress(..)
     -- * Entity numbers
   , CoilNumber
@@ -20,7 +21,8 @@ module Network.Modbus.Common.Protocol
   , mkInputRegisterNumber
   , mkHoldingRegisterNumber
 
-    -- * Protocol sessions
+    -- ** Protocol sessions
+  , Config(..)
   , RetryPredicate
 
     -- * Protocol objects
@@ -34,20 +36,20 @@ module Network.Modbus.Common.Protocol
   , exceptionCodeParser
 
     -- ** Builders
-  , pduBuilder
+  , addressBuilder
+  , coilsBuilder
   , functionCodeBuilder
+  , pduBuilder
+  , rangeBuilder
   , exceptionCodeBuilder
+  , builderToByteString
 
     -- * Executing commands
-  ,builderToByteString
-  ,addressBuilder
-  ,rangeBuilder
-  ,coilsBuilder
   ,getW8s
   ,getW16s
   ,(<&>)
   ,anyWord16be
-  ,Config(..)) where
+  ) where
 
 import "attoparsec" Data.Attoparsec.ByteString ( anyWord8 )
 import qualified "attoparsec" Data.Attoparsec.ByteString as AB
@@ -61,7 +63,6 @@ import "exceptions" Control.Monad.Catch
   ( Exception )
 import           "this" Data.Range ( Range )
 import qualified "this" Data.Range as Range
-
 
 
 --------------------------------------------------------------------------------

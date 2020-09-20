@@ -10,11 +10,10 @@
 {-# OPTIONS_HADDOCK not-home #-}
 
 module Network.Modbus.RTU.Internal.Batch
-  ( -- * Sessions
+  (
     Session
   , runSession
 
-    -- ** Workers
   , Worker
   , directWorker
   , batchWorker
@@ -24,7 +23,6 @@ module Network.Modbus.RTU.Internal.Batch
   , defaultBatchConfig
   , defaultBatchReadConfig
 
-    -- * Commands
   , command
 
   , readCoils

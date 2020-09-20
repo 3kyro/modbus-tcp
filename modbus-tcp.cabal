@@ -37,13 +37,16 @@ library
         Data.Range
         Network.Modbus.TCP
         Network.Modbus.RTU
+
+    other-modules:
+        Network.Modbus.Common.Protocol
+
+        Network.Modbus.TCP.Internal.Batch
+        Network.Modbus.TCP.Internal.Protocol
+
         Network.Modbus.RTU.Internal.Protocol
         Network.Modbus.RTU.Internal.Batch
         Network.Modbus.RTU.Internal.CRC16
-
-        Network.Modbus.Common.Protocol
-        Network.Modbus.TCP.Internal.Batch
-        Network.Modbus.TCP.Internal.Protocol
 
 executable modbus-tcp-exe
     main-is: Main.hs

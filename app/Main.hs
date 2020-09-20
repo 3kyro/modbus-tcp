@@ -6,9 +6,7 @@ import qualified Network.Socket as S
 import Control.Exception.Safe (bracket)
 import Data.IP (toHostAddress, IPv4)
 import qualified System.Hardware.Serialport as SP
-
-import Network.Modbus.Common.Protocol
-import Network.Modbus.RTU.Internal.Batch
+import Network.Modbus.RTU
 import Data.Range (fromBounds)
 import Data.Word (Word16)
 
